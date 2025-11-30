@@ -1,10 +1,12 @@
 package com.countdownhour.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.countdownhour.data.PomodoroPhase
 import com.countdownhour.data.PomodoroSettings
 import com.countdownhour.data.PomodoroState
+import com.countdownhour.service.TimerService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +20,19 @@ class PomodoroViewModel : ViewModel() {
     val pomodoroState: StateFlow<PomodoroState> = _pomodoroState.asStateFlow()
 
     private var timerJob: Job? = null
+    private var endTimeMillis: Long = 0L
+    private var currentPhaseForResume: PomodoroPhase = PomodoroPhase.IDLE
+    private var appContext: Context? = null
+
+    fun setContext(context: Context) {
+        appContext = context.applicationContext
+    }
 
     fun startWork() {
         val settings = _pomodoroState.value.settings
         val totalMillis = settings.workDurationMinutes * 60 * 1000L
+        endTimeMillis = System.currentTimeMillis() + totalMillis
+        currentPhaseForResume = PomodoroPhase.WORK
 
         _pomodoroState.value = _pomodoroState.value.copy(
             phase = PomodoroPhase.WORK,
@@ -29,6 +40,7 @@ class PomodoroViewModel : ViewModel() {
             remainingMillis = totalMillis
         )
 
+        appContext?.let { TimerService.startPomodoro(it, totalMillis, PomodoroPhase.WORK) }
         startCountdown()
     }
 
@@ -45,6 +57,8 @@ class PomodoroViewModel : ViewModel() {
 
         val totalMillis = breakDuration * 60 * 1000L
         val newPhase = if (isLongBreak) PomodoroPhase.LONG_BREAK else PomodoroPhase.SHORT_BREAK
+        endTimeMillis = System.currentTimeMillis() + totalMillis
+        currentPhaseForResume = newPhase
 
         _pomodoroState.value = state.copy(
             phase = newPhase,
@@ -52,6 +66,7 @@ class PomodoroViewModel : ViewModel() {
             remainingMillis = totalMillis
         )
 
+        appContext?.let { TimerService.startPomodoro(it, totalMillis, newPhase) }
         startCountdown()
     }
 
@@ -61,8 +76,10 @@ class PomodoroViewModel : ViewModel() {
             while (_pomodoroState.value.remainingMillis > 0 &&
                    _pomodoroState.value.isRunning) {
                 delay(1000L)
+                // Recalculate from end time for accuracy
+                val remaining = endTimeMillis - System.currentTimeMillis()
                 _pomodoroState.value = _pomodoroState.value.copy(
-                    remainingMillis = (_pomodoroState.value.remainingMillis - 1000).coerceAtLeast(0)
+                    remainingMillis = remaining.coerceAtLeast(0)
                 )
             }
 
@@ -74,6 +91,8 @@ class PomodoroViewModel : ViewModel() {
 
     private fun onPhaseComplete() {
         val state = _pomodoroState.value
+        appContext?.let { TimerService.stop(it) }
+
         when (state.phase) {
             PomodoroPhase.WORK -> {
                 val newPomodoroCount = state.currentPomodoroInCycle + 1
@@ -98,22 +117,23 @@ class PomodoroViewModel : ViewModel() {
 
     fun pause() {
         timerJob?.cancel()
+        currentPhaseForResume = _pomodoroState.value.phase
         _pomodoroState.value = _pomodoroState.value.copy(phase = PomodoroPhase.PAUSED)
+        appContext?.let { TimerService.pause(it) }
     }
 
     fun resume() {
-        val previousPhase = when {
-            _pomodoroState.value.totalMillis == _pomodoroState.value.settings.workDurationMinutes * 60 * 1000L -> PomodoroPhase.WORK
-            _pomodoroState.value.totalMillis == _pomodoroState.value.settings.shortBreakMinutes * 60 * 1000L -> PomodoroPhase.SHORT_BREAK
-            else -> PomodoroPhase.LONG_BREAK
-        }
-        _pomodoroState.value = _pomodoroState.value.copy(phase = previousPhase)
+        // Recalculate end time based on remaining millis
+        endTimeMillis = System.currentTimeMillis() + _pomodoroState.value.remainingMillis
+        _pomodoroState.value = _pomodoroState.value.copy(phase = currentPhaseForResume)
+        appContext?.let { TimerService.resume(it) }
         startCountdown()
     }
 
     fun reset() {
         timerJob?.cancel()
         _pomodoroState.value = PomodoroState()
+        appContext?.let { TimerService.stop(it) }
     }
 
     fun skipPhase() {
@@ -123,6 +143,20 @@ class PomodoroViewModel : ViewModel() {
 
     fun updateSettings(settings: PomodoroSettings) {
         _pomodoroState.value = _pomodoroState.value.copy(settings = settings)
+    }
+
+    fun syncFromBackground() {
+        // Called when app comes back to foreground - recalculate remaining time
+        if (_pomodoroState.value.isRunning && endTimeMillis > 0) {
+            val remaining = endTimeMillis - System.currentTimeMillis()
+            if (remaining <= 0) {
+                onPhaseComplete()
+            } else {
+                _pomodoroState.value = _pomodoroState.value.copy(
+                    remainingMillis = remaining
+                )
+            }
+        }
     }
 
     override fun onCleared() {
