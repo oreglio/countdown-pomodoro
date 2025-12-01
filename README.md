@@ -40,12 +40,6 @@ A minimalist Android countdown timer app with Pomodoro functionality, optimized 
 - Minimal animations to reduce screen flickering
 - Clean, distraction-free interface
 
-## Screenshots
-
-| Countdown | Pomodoro |
-|-----------|----------|
-| Portrait & Landscape | Portrait & Landscape |
-
 ## Tech Stack
 
 - **Language**: Kotlin
@@ -54,11 +48,16 @@ A minimalist Android countdown timer app with Pomodoro functionality, optimized 
 - **Min SDK**: 21 (Android 5.0)
 - **Target SDK**: 34 (Android 14)
 
+### Background Support
+- Timer continues running when app is in background
+- Notification shows remaining time
+- Screen stays awake while app is active
+
 ## Building
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/countdownhour.git
+git clone https://github.com/oreglio/countdown-pomodoro.git
 
 # Build the project
 ./gradlew build
@@ -75,6 +74,8 @@ app/src/main/java/com/countdownhour/
 ├── data/
 │   ├── TimerState.kt
 │   └── PomodoroState.kt
+├── service/
+│   └── TimerService.kt
 ├── viewmodel/
 │   ├── TimerViewModel.kt
 │   └── PomodoroViewModel.kt

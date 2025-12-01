@@ -29,15 +29,24 @@ class PomodoroViewModel : ViewModel() {
     }
 
     fun startWork() {
-        val settings = _pomodoroState.value.settings
+        val state = _pomodoroState.value
+        val settings = state.settings
         val totalMillis = settings.workDurationMinutes * 60 * 1000L
         endTimeMillis = System.currentTimeMillis() + totalMillis
         currentPhaseForResume = PomodoroPhase.WORK
 
-        _pomodoroState.value = _pomodoroState.value.copy(
+        // Reset cycle if all pomodoros were completed (starting fresh cycle)
+        val newCycleCount = if (state.currentPomodoroInCycle >= settings.pomodorosUntilLongBreak) {
+            0
+        } else {
+            state.currentPomodoroInCycle
+        }
+
+        _pomodoroState.value = state.copy(
             phase = PomodoroPhase.WORK,
             totalMillis = totalMillis,
-            remainingMillis = totalMillis
+            remainingMillis = totalMillis,
+            currentPomodoroInCycle = newCycleCount
         )
 
         appContext?.let { TimerService.startPomodoro(it, totalMillis, PomodoroPhase.WORK) }
@@ -47,7 +56,8 @@ class PomodoroViewModel : ViewModel() {
     fun startBreak() {
         val state = _pomodoroState.value
         val settings = state.settings
-        val isLongBreak = (state.currentPomodoroInCycle + 1) >= settings.pomodorosUntilLongBreak
+        // Long break is available when all pomodoros in cycle are completed
+        val isLongBreak = state.currentPomodoroInCycle >= settings.pomodorosUntilLongBreak
 
         val breakDuration = if (isLongBreak) {
             settings.longBreakMinutes
@@ -95,19 +105,25 @@ class PomodoroViewModel : ViewModel() {
 
         when (state.phase) {
             PomodoroPhase.WORK -> {
-                val newPomodoroCount = state.currentPomodoroInCycle + 1
-                val isLongBreakNext = newPomodoroCount >= state.settings.pomodorosUntilLongBreak
-
+                // Increment pomodoro count - don't reset here, let indicators fill up
                 _pomodoroState.value = state.copy(
                     phase = PomodoroPhase.IDLE,
                     completedPomodoros = state.completedPomodoros + 1,
-                    currentPomodoroInCycle = if (isLongBreakNext) 0 else newPomodoroCount,
+                    currentPomodoroInCycle = state.currentPomodoroInCycle + 1,
                     remainingMillis = 0L
                 )
             }
-            PomodoroPhase.SHORT_BREAK, PomodoroPhase.LONG_BREAK -> {
+            PomodoroPhase.SHORT_BREAK -> {
                 _pomodoroState.value = state.copy(
                     phase = PomodoroPhase.IDLE,
+                    remainingMillis = 0L
+                )
+            }
+            PomodoroPhase.LONG_BREAK -> {
+                // Reset cycle after long break is completed
+                _pomodoroState.value = state.copy(
+                    phase = PomodoroPhase.IDLE,
+                    currentPomodoroInCycle = 0,
                     remainingMillis = 0L
                 )
             }
