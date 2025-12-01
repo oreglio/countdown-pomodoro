@@ -119,7 +119,8 @@ class PomodoroViewModel : ViewModel() {
             PomodoroPhase.SHORT_BREAK -> {
                 _pomodoroState.value = state.copy(
                     phase = PomodoroPhase.IDLE,
-                    remainingMillis = 0L
+                    remainingMillis = 0L,
+                    sessionCompletedAt = System.currentTimeMillis()
                 )
             }
             PomodoroPhase.LONG_BREAK -> {
@@ -127,7 +128,8 @@ class PomodoroViewModel : ViewModel() {
                 _pomodoroState.value = state.copy(
                     phase = PomodoroPhase.IDLE,
                     currentPomodoroInCycle = 0,
-                    remainingMillis = 0L
+                    remainingMillis = 0L,
+                    sessionCompletedAt = System.currentTimeMillis()
                 )
             }
             else -> {}
