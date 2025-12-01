@@ -30,6 +30,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +54,7 @@ import com.countdownhour.ui.components.ControlButtons
 import com.countdownhour.ui.components.TimePickerDialog
 import com.countdownhour.ui.components.TimeSummaryCard
 import com.countdownhour.viewmodel.TimerViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun TimerScreen(
@@ -212,6 +214,20 @@ private fun TimerLandscapeLayout(
     onStop: () -> Unit,
     onReset: () -> Unit
 ) {
+    // Track elapsed time since timer finished
+    var elapsedSinceFinished by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(timerState.finishedAt) {
+        if (timerState.finishedAt != null && timerState.status == TimerStatus.FINISHED) {
+            while (true) {
+                elapsedSinceFinished = System.currentTimeMillis() - timerState.finishedAt
+                delay(1000L)
+            }
+        } else {
+            elapsedSinceFinished = 0L
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -267,6 +283,15 @@ private fun TimerLandscapeLayout(
                         letterSpacing = (-2).sp,
                         color = MaterialTheme.colorScheme.tertiary
                     )
+                    // Elapsed time since finished
+                    if (timerState.finishedAt != null && elapsedSinceFinished > 0) {
+                        Text(
+                            text = "+${formatElapsedTime(elapsedSinceFinished)}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Time's Up!",
@@ -349,7 +374,34 @@ private fun TimerLandscapeLayout(
 }
 
 @Composable
+private fun formatElapsedTime(elapsedMillis: Long): String {
+    val totalSeconds = elapsedMillis / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+
+    return if (hours > 0) {
+        String.format("%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
+}
+
+@Composable
 private fun TimerContent(timerState: TimerState) {
+    // Track elapsed time since timer finished
+    var elapsedSinceFinished by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(timerState.finishedAt) {
+        if (timerState.finishedAt != null && timerState.status == TimerStatus.FINISHED) {
+            while (true) {
+                elapsedSinceFinished = System.currentTimeMillis() - timerState.finishedAt
+                delay(1000L)
+            }
+        } else {
+            elapsedSinceFinished = 0L
+        }
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -413,6 +465,16 @@ private fun TimerContent(timerState: TimerState) {
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.tertiary
                 )
+                // Elapsed time since finished
+                if (timerState.finishedAt != null && elapsedSinceFinished > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "+${formatElapsedTime(elapsedSinceFinished)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             else -> {
                 // Running or Paused - show countdown

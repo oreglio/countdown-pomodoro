@@ -12,7 +12,8 @@ data class TimerState(
     val targetMinute: Int = -1,
     val remainingMillis: Long = 0L,
     val totalMillis: Long = 0L,
-    val status: TimerStatus = TimerStatus.IDLE
+    val status: TimerStatus = TimerStatus.IDLE,
+    val finishedAt: Long? = null  // Timestamp when timer finished (for elapsed timer)
 ) {
     val hasTargetSet: Boolean
         get() = targetHour >= 0 && targetMinute >= 0

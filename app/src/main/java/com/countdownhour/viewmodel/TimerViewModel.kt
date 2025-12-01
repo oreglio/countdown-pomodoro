@@ -54,7 +54,8 @@ class TimerViewModel : ViewModel() {
         _timerState.value = state.copy(
             totalMillis = totalMillis,
             remainingMillis = totalMillis,
-            status = TimerStatus.RUNNING
+            status = TimerStatus.RUNNING,
+            finishedAt = null  // Reset elapsed timer
         )
 
         // Start foreground service
@@ -76,7 +77,10 @@ class TimerViewModel : ViewModel() {
                 )
             }
             if (_timerState.value.remainingMillis <= 0) {
-                _timerState.value = _timerState.value.copy(status = TimerStatus.FINISHED)
+                _timerState.value = _timerState.value.copy(
+                    status = TimerStatus.FINISHED,
+                    finishedAt = System.currentTimeMillis()
+                )
                 appContext?.let { TimerService.stop(it) }
             }
         }
@@ -121,7 +125,8 @@ class TimerViewModel : ViewModel() {
         _timerState.value = state.copy(
             totalMillis = totalMillis,
             remainingMillis = totalMillis,
-            status = TimerStatus.RUNNING
+            status = TimerStatus.RUNNING,
+            finishedAt = null  // Reset elapsed timer
         )
         appContext?.let { TimerService.startCountdown(it, targetTimeMillis) }
         startCountdown()
@@ -134,7 +139,8 @@ class TimerViewModel : ViewModel() {
             if (remaining <= 0) {
                 _timerState.value = _timerState.value.copy(
                     remainingMillis = 0,
-                    status = TimerStatus.FINISHED
+                    status = TimerStatus.FINISHED,
+                    finishedAt = targetTimeMillis  // Use target time as finish time
                 )
             } else {
                 _timerState.value = _timerState.value.copy(

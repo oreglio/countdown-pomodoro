@@ -46,7 +46,8 @@ class PomodoroViewModel : ViewModel() {
             phase = PomodoroPhase.WORK,
             totalMillis = totalMillis,
             remainingMillis = totalMillis,
-            currentPomodoroInCycle = newCycleCount
+            currentPomodoroInCycle = newCycleCount,
+            sessionCompletedAt = null  // Reset idle timer
         )
 
         appContext?.let { TimerService.startPomodoro(it, totalMillis, PomodoroPhase.WORK) }
@@ -73,7 +74,8 @@ class PomodoroViewModel : ViewModel() {
         _pomodoroState.value = state.copy(
             phase = newPhase,
             totalMillis = totalMillis,
-            remainingMillis = totalMillis
+            remainingMillis = totalMillis,
+            sessionCompletedAt = null  // Reset idle timer
         )
 
         appContext?.let { TimerService.startPomodoro(it, totalMillis, newPhase) }
@@ -110,7 +112,8 @@ class PomodoroViewModel : ViewModel() {
                     phase = PomodoroPhase.IDLE,
                     completedPomodoros = state.completedPomodoros + 1,
                     currentPomodoroInCycle = state.currentPomodoroInCycle + 1,
-                    remainingMillis = 0L
+                    remainingMillis = 0L,
+                    sessionCompletedAt = System.currentTimeMillis()
                 )
             }
             PomodoroPhase.SHORT_BREAK -> {

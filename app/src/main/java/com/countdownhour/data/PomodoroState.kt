@@ -21,7 +21,8 @@ data class PomodoroState(
     val totalMillis: Long = 0L,
     val completedPomodoros: Int = 0,
     val currentPomodoroInCycle: Int = 0,
-    val settings: PomodoroSettings = PomodoroSettings()
+    val settings: PomodoroSettings = PomodoroSettings(),
+    val sessionCompletedAt: Long? = null  // Timestamp when session finished (for idle timer)
 ) {
     val remainingMinutes: Int
         get() = (remainingMillis / 60000).toInt()

@@ -124,6 +124,20 @@ fun PomodoroScreen(
 }
 
 @Composable
+private fun formatElapsedTime(elapsedMillis: Long): String {
+    val totalSeconds = elapsedMillis / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+
+    return if (hours > 0) {
+        String.format("%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
+}
+
+@Composable
 private fun PomodoroPortraitLayout(
     state: PomodoroState,
     onStartWork: () -> Unit,
@@ -134,6 +148,19 @@ private fun PomodoroPortraitLayout(
     onSkip: () -> Unit,
     onShowSettings: () -> Unit
 ) {
+    // Track elapsed time since session completed
+    var elapsedSinceCompletion by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(state.sessionCompletedAt) {
+        if (state.sessionCompletedAt != null && state.phase == PomodoroPhase.IDLE) {
+            while (true) {
+                elapsedSinceCompletion = System.currentTimeMillis() - state.sessionCompletedAt
+                delay(1000L)
+            }
+        } else {
+            elapsedSinceCompletion = 0L
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -195,6 +222,17 @@ private fun PomodoroPortraitLayout(
                     fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+
+                // Elapsed time since session completed (only in IDLE after a session)
+                if (state.phase == PomodoroPhase.IDLE && state.sessionCompletedAt != null && elapsedSinceCompletion > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "+${formatElapsedTime(elapsedSinceCompletion)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
@@ -241,6 +279,20 @@ private fun PomodoroLandscapeLayout(
     onSkip: () -> Unit,
     onShowSettings: () -> Unit
 ) {
+    // Track elapsed time since session completed
+    var elapsedSinceCompletion by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(state.sessionCompletedAt) {
+        if (state.sessionCompletedAt != null && state.phase == PomodoroPhase.IDLE) {
+            while (true) {
+                elapsedSinceCompletion = System.currentTimeMillis() - state.sessionCompletedAt
+                delay(1000L)
+            }
+        } else {
+            elapsedSinceCompletion = 0L
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -301,6 +353,16 @@ private fun PomodoroLandscapeLayout(
                 letterSpacing = (-2).sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
+
+            // Elapsed time since session completed (only in IDLE after a session)
+            if (state.phase == PomodoroPhase.IDLE && state.sessionCompletedAt != null && elapsedSinceCompletion > 0) {
+                Text(
+                    text = "+${formatElapsedTime(elapsedSinceCompletion)}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
