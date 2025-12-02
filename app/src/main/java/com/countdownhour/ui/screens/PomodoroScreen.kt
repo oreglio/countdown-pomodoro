@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -125,6 +126,15 @@ fun PomodoroScreen(
             }
         )
     }
+}
+
+@Composable
+private fun formatEndTime(remainingMillis: Long): String {
+    val endTimeMillis = System.currentTimeMillis() + remainingMillis
+    val calendar = java.util.Calendar.getInstance().apply {
+        timeInMillis = endTimeMillis
+    }
+    return String.format("%02d:%02d", calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE))
 }
 
 @Composable
@@ -238,6 +248,16 @@ private fun PomodoroPortraitLayout(
                     fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+
+                // End time (only when running)
+                if (state.isRunning && state.remainingMillis > 0) {
+                    Text(
+                        text = "→ ${formatEndTime(state.remainingMillis)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
 
                 // Elapsed time since session completed (only in IDLE after a session)
                 if (state.phase == PomodoroPhase.IDLE && state.sessionCompletedAt != null && elapsedSinceCompletion > 0) {
@@ -387,6 +407,16 @@ private fun PomodoroLandscapeLayout(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
+            // End time (only when running)
+            if (state.isRunning && state.remainingMillis > 0) {
+                Text(
+                    text = "→ ${formatEndTime(state.remainingMillis)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
             // Elapsed time since session completed (only in IDLE after a session)
             if (state.phase == PomodoroPhase.IDLE && state.sessionCompletedAt != null && elapsedSinceCompletion > 0) {
                 Text(
@@ -469,6 +499,9 @@ private fun DurationAdjuster(
 ) {
     val dragThreshold = 30f // pixels per 1 minute change
 
+    // Keep callback reference updated for pointerInput
+    val currentOnFineTune by rememberUpdatedState(onFineTune)
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp)
@@ -508,11 +541,11 @@ private fun DurationAdjuster(
                                 // Negative drag = swipe up = increase
                                 // Positive drag = swipe down = decrease
                                 while (totalDrag <= -dragThreshold) {
-                                    onFineTune(1)
+                                    currentOnFineTune(1)
                                     totalDrag += dragThreshold
                                 }
                                 while (totalDrag >= dragThreshold) {
-                                    onFineTune(-1)
+                                    currentOnFineTune(-1)
                                     totalDrag -= dragThreshold
                                 }
                                 change.consume()
@@ -576,11 +609,16 @@ private fun PomodoroControlButtons(
                 ) {
                     OutlinedButton(
                         onClick = onStartWork,
-                        modifier = if (compact) Modifier.width(120.dp) else Modifier.width(160.dp)
+                        modifier = if (compact) Modifier.width(150.dp) else Modifier.width(190.dp)
                     ) {
                         Text(
                             "Focus ${focusDuration}mn",
                             style = MaterialTheme.typography.labelLarge
+                        )
+                        Text(
+                            " → ${formatEndTime(focusDuration * 60 * 1000L)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                     }
                     DurationAdjuster(
@@ -599,11 +637,16 @@ private fun PomodoroControlButtons(
                 ) {
                     OutlinedButton(
                         onClick = onStartBreak,
-                        modifier = if (compact) Modifier.width(120.dp) else Modifier.width(160.dp)
+                        modifier = if (compact) Modifier.width(150.dp) else Modifier.width(190.dp)
                     ) {
                         Text(
                             if (isLongBreak) "Long ${breakDuration}mn" else "Break ${breakDuration}mn",
                             style = MaterialTheme.typography.labelLarge
+                        )
+                        Text(
+                            " → ${formatEndTime(breakDuration * 60 * 1000L)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                     }
                     DurationAdjuster(
