@@ -443,22 +443,24 @@ private fun PomodoroLandscapeLayout(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Compact progress circle
-            PomodoroProgress(
-                progress = state.progress,
-                phase = state.phase,
-                size = 160.dp,
-                strokeWidth = 12.dp
-            ) {
-                Text(
-                    text = "${(state.progress * 100).toInt()}%",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            // Compact progress circle (hide in IDLE to save space)
+            if (state.phase != PomodoroPhase.IDLE) {
+                PomodoroProgress(
+                    progress = state.progress,
+                    phase = state.phase,
+                    size = 160.dp,
+                    strokeWidth = 12.dp
+                ) {
+                    Text(
+                        text = "${(state.progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             Text(
                 text = "Total: ${state.completedPomodoros}",
@@ -466,7 +468,7 @@ private fun PomodoroLandscapeLayout(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(if (state.phase == PomodoroPhase.IDLE) 16.dp else 24.dp))
 
             // Compact control buttons for landscape
             PomodoroControlButtons(
@@ -605,21 +607,23 @@ private fun PomodoroControlButtons(
                 // Focus section
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 12.dp)
                 ) {
                     OutlinedButton(
                         onClick = onStartWork,
-                        modifier = if (compact) Modifier.width(150.dp) else Modifier.width(190.dp)
+                        modifier = Modifier.width(if (compact) 100.dp else 190.dp)
                     ) {
                         Text(
-                            "Focus ${focusDuration}mn",
+                            if (compact) "${focusDuration}mn" else "Focus ${focusDuration}mn",
                             style = MaterialTheme.typography.labelLarge
                         )
-                        Text(
-                            " → ${formatEndTime(focusDuration * 60 * 1000L)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
+                        if (!compact) {
+                            Text(
+                                " → ${formatEndTime(focusDuration * 60 * 1000L)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                     DurationAdjuster(
                         value = focusDuration,
@@ -633,21 +637,23 @@ private fun PomodoroControlButtons(
                 // Break section
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 12.dp)
                 ) {
                     OutlinedButton(
                         onClick = onStartBreak,
-                        modifier = if (compact) Modifier.width(150.dp) else Modifier.width(190.dp)
+                        modifier = Modifier.width(if (compact) 100.dp else 190.dp)
                     ) {
                         Text(
-                            if (isLongBreak) "Long ${breakDuration}mn" else "Break ${breakDuration}mn",
+                            if (compact) "${breakDuration}mn" else if (isLongBreak) "Long ${breakDuration}mn" else "Break ${breakDuration}mn",
                             style = MaterialTheme.typography.labelLarge
                         )
-                        Text(
-                            " → ${formatEndTime(breakDuration * 60 * 1000L)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
+                        if (!compact) {
+                            Text(
+                                " → ${formatEndTime(breakDuration * 60 * 1000L)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                     DurationAdjuster(
                         value = breakDuration,
