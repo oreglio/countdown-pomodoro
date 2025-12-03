@@ -1,11 +1,15 @@
 package com.countdownhour.data
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
+@Serializable
 data class PomodoroTodo(
     val id: String = UUID.randomUUID().toString(),
     val text: String,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val completedAt: Long? = null
 )
 
 enum class PomodoroPhase {
@@ -16,6 +20,7 @@ enum class PomodoroPhase {
     PAUSED          // Timer paused
 }
 
+@Serializable
 data class PomodoroSettings(
     val workDurationMinutes: Int = 25,
     val shortBreakMinutes: Int = 5,

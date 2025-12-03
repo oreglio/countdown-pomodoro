@@ -3,6 +3,7 @@ package com.countdownhour.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.countdownhour.data.PomodoroDataStore
 import com.countdownhour.data.PomodoroPhase
 import com.countdownhour.data.PomodoroSettings
 import com.countdownhour.data.PomodoroState
@@ -13,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class PomodoroViewModel : ViewModel() {
@@ -24,9 +26,46 @@ class PomodoroViewModel : ViewModel() {
     private var endTimeMillis: Long = 0L
     private var currentPhaseForResume: PomodoroPhase = PomodoroPhase.IDLE
     private var appContext: Context? = null
+    private var dataStore: PomodoroDataStore? = null
+    private var isInitialized = false
 
     fun setContext(context: Context) {
         appContext = context.applicationContext
+        if (!isInitialized) {
+            dataStore = PomodoroDataStore(context.applicationContext)
+            loadPersistedData()
+            isInitialized = true
+        }
+    }
+
+    private fun loadPersistedData() {
+        viewModelScope.launch {
+            dataStore?.let { store ->
+                val settings = store.settingsFlow.first()
+                val todoPool = store.todoPoolFlow.first()
+                val selectedIds = store.selectedTodoIdsFlow.first()
+                val completedPomodoros = store.completedPomodorosFlow.first()
+
+                _pomodoroState.value = _pomodoroState.value.copy(
+                    settings = settings,
+                    todoPool = todoPool,
+                    selectedTodoIds = selectedIds,
+                    completedPomodoros = completedPomodoros
+                )
+            }
+        }
+    }
+
+    private fun persistData() {
+        viewModelScope.launch {
+            dataStore?.let { store ->
+                val state = _pomodoroState.value
+                store.saveSettings(state.settings)
+                store.saveTodoPool(state.todoPool)
+                store.saveSelectedTodoIds(state.selectedTodoIds)
+                store.saveCompletedPomodoros(state.completedPomodoros)
+            }
+        }
     }
 
     fun startWork(customDurationMinutes: Int? = null, skipTodoSelection: Boolean = false) {
@@ -123,6 +162,7 @@ class PomodoroViewModel : ViewModel() {
                     remainingMillis = 0L,
                     sessionCompletedAt = System.currentTimeMillis()
                 )
+                persistData()  // Save completed pomodoros
             }
             PomodoroPhase.SHORT_BREAK -> {
                 _pomodoroState.value = state.copy(
@@ -169,6 +209,7 @@ class PomodoroViewModel : ViewModel() {
             settings = state.settings
         )
         appContext?.let { TimerService.stop(it) }
+        persistData()
     }
 
     fun clearAllTodos() {
@@ -177,6 +218,7 @@ class PomodoroViewModel : ViewModel() {
             selectedTodoIds = emptySet(),
             todos = emptyList()
         )
+        persistData()
     }
 
     fun skipPhase() {
@@ -186,6 +228,7 @@ class PomodoroViewModel : ViewModel() {
 
     fun updateSettings(settings: PomodoroSettings) {
         _pomodoroState.value = _pomodoroState.value.copy(settings = settings)
+        persistData()
     }
 
     fun syncFromBackground() {
@@ -210,6 +253,7 @@ class PomodoroViewModel : ViewModel() {
             _pomodoroState.value = state.copy(
                 todoPool = state.todoPool + newTodo
             )
+            persistData()
         }
     }
 
@@ -219,6 +263,7 @@ class PomodoroViewModel : ViewModel() {
             todoPool = state.todoPool.filter { it.id != id },
             selectedTodoIds = state.selectedTodoIds - id
         )
+        persistData()
     }
 
     fun toggleTodoSelection(id: String) {
@@ -231,40 +276,47 @@ class PomodoroViewModel : ViewModel() {
             state.selectedTodoIds  // Max 5 selected
         }
         _pomodoroState.value = state.copy(selectedTodoIds = newSelection)
+        persistData()
     }
 
     fun toggleTodo(id: String) {
         val state = _pomodoroState.value
-        val newCompletedState = state.todos.find { it.id == id }?.isCompleted?.not() ?: return
+        val todo = state.todos.find { it.id == id } ?: return
+        val isNowCompleted = !todo.isCompleted
+        val completedAt = if (isNowCompleted) System.currentTimeMillis() else null
 
         _pomodoroState.value = state.copy(
             // Update active todos
-            todos = state.todos.map { todo ->
-                if (todo.id == id) todo.copy(isCompleted = newCompletedState)
-                else todo
+            todos = state.todos.map { t ->
+                if (t.id == id) t.copy(isCompleted = isNowCompleted, completedAt = completedAt)
+                else t
             },
             // Sync completion status back to pool
-            todoPool = state.todoPool.map { todo ->
-                if (todo.id == id) todo.copy(isCompleted = newCompletedState)
-                else todo
-            },
-            // Unselect if completed
-            selectedTodoIds = if (newCompletedState) state.selectedTodoIds - id else state.selectedTodoIds
-        )
-    }
-
-    fun toggleTodoPoolCompletion(id: String) {
-        val state = _pomodoroState.value
-        val isNowCompleted = state.todoPool.find { it.id == id }?.isCompleted?.not() ?: return
-
-        _pomodoroState.value = state.copy(
-            todoPool = state.todoPool.map { todo ->
-                if (todo.id == id) todo.copy(isCompleted = isNowCompleted)
-                else todo
+            todoPool = state.todoPool.map { t ->
+                if (t.id == id) t.copy(isCompleted = isNowCompleted, completedAt = completedAt)
+                else t
             },
             // Unselect if completed
             selectedTodoIds = if (isNowCompleted) state.selectedTodoIds - id else state.selectedTodoIds
         )
+        persistData()
+    }
+
+    fun toggleTodoPoolCompletion(id: String) {
+        val state = _pomodoroState.value
+        val todo = state.todoPool.find { it.id == id } ?: return
+        val isNowCompleted = !todo.isCompleted
+        val completedAt = if (isNowCompleted) System.currentTimeMillis() else null
+
+        _pomodoroState.value = state.copy(
+            todoPool = state.todoPool.map { t ->
+                if (t.id == id) t.copy(isCompleted = isNowCompleted, completedAt = completedAt)
+                else t
+            },
+            // Unselect if completed
+            selectedTodoIds = if (isNowCompleted) state.selectedTodoIds - id else state.selectedTodoIds
+        )
+        persistData()
     }
 
     private fun activateSelectedTodos() {
