@@ -139,6 +139,7 @@ fun PomodoroScreen(
                 onResume = { viewModel.resume() },
                 onReset = { viewModel.reset() },
                 onSkip = { viewModel.skipPhase() },
+                onAddTime = { viewModel.addTime(it) },
                 onShowSettings = { showSettings = true },
                 onShowTodos = { showTodoDialog = true },
                 onToggleTodo = { viewModel.toggleTodo(it) }
@@ -152,6 +153,7 @@ fun PomodoroScreen(
                 onResume = { viewModel.resume() },
                 onReset = { viewModel.reset() },
                 onSkip = { viewModel.skipPhase() },
+                onAddTime = { viewModel.addTime(it) },
                 onShowSettings = { showSettings = true },
                 onShowTodos = { showTodoDialog = true },
                 onToggleTodo = { viewModel.toggleTodo(it) }
@@ -204,6 +206,7 @@ private fun PomodoroPortraitLayout(
     onResume: () -> Unit,
     onReset: () -> Unit,
     onSkip: () -> Unit,
+    onAddTime: (Int) -> Unit,
     onShowSettings: () -> Unit,
     onShowTodos: () -> Unit,
     onToggleTodo: (String) -> Unit
@@ -310,10 +313,42 @@ private fun PomodoroPortraitLayout(
             progress = state.progress,
             phase = state.phase
         ) {
+            val dragThreshold = 40f
+            val currentOnAddTime by rememberUpdatedState(onAddTime)
+
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = if (state.isRunning) {
+                    Modifier.pointerInput(Unit) {
+                        var totalDrag = 0f
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull()
+                                if (change != null && change.pressed) {
+                                    val dragAmount = change.position.y - change.previousPosition.y
+                                    totalDrag += dragAmount
+
+                                    while (totalDrag <= -dragThreshold) {
+                                        currentOnAddTime(1)
+                                        totalDrag += dragThreshold
+                                    }
+                                    while (totalDrag >= dragThreshold) {
+                                        currentOnAddTime(-1)
+                                        totalDrag -= dragThreshold
+                                    }
+                                    change.consume()
+                                } else {
+                                    totalDrag = 0f
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Modifier
+                }
             ) {
-                // Timer display
+                // Timer display (swipeable during running sessions)
                 Text(
                     text = String.format(
                         "%02d:%02d",
@@ -382,7 +417,8 @@ private fun PomodoroPortraitLayout(
             onPause = onPause,
             onResume = onResume,
             onReset = onReset,
-            onSkip = onSkip
+            onSkip = onSkip,
+            onAddTime = onAddTime
         )
 
         // Bottom flexible space to center the block when todos are shown
@@ -401,6 +437,7 @@ private fun PomodoroLandscapeLayout(
     onResume: () -> Unit,
     onReset: () -> Unit,
     onSkip: () -> Unit,
+    onAddTime: (Int) -> Unit,
     onShowSettings: () -> Unit,
     onShowTodos: () -> Unit,
     onToggleTodo: (String) -> Unit
@@ -474,18 +511,14 @@ private fun PomodoroLandscapeLayout(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Timer display
-                Text(
-                    text = String.format(
-                        "%02d:%02d",
-                        state.remainingMinutes,
-                        state.remainingSeconds
-                    ),
+                // Timer display (swipeable during running sessions)
+                SwipeableTimerText(
+                    minutes = state.remainingMinutes,
+                    seconds = state.remainingSeconds,
+                    isRunning = state.isRunning,
+                    onAddMinutes = onAddTime,
                     fontSize = 84.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = (-2).sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    letterSpacing = (-2).sp
                 )
 
                 // End time
@@ -531,6 +564,7 @@ private fun PomodoroLandscapeLayout(
                     onResume = onResume,
                     onReset = onReset,
                     onSkip = onSkip,
+                    onAddTime = onAddTime,
                     compact = true
                 )
             }
@@ -613,18 +647,14 @@ private fun PomodoroLandscapeLayout(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // LARGE timer display - the main focus
-                Text(
-                    text = String.format(
-                        "%02d:%02d",
-                        state.remainingMinutes,
-                        state.remainingSeconds
-                    ),
+                // LARGE timer display - the main focus (swipeable during running sessions)
+                SwipeableTimerText(
+                    minutes = state.remainingMinutes,
+                    seconds = state.remainingSeconds,
+                    isRunning = state.isRunning,
+                    onAddMinutes = onAddTime,
                     fontSize = 120.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = (-2).sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    letterSpacing = (-2).sp
                 )
 
                 // End time (only when running)
@@ -706,11 +736,68 @@ private fun PomodoroLandscapeLayout(
                     onResume = onResume,
                     onReset = onReset,
                     onSkip = onSkip,
+                    onAddTime = onAddTime,
                     compact = true
                 )
             }
         }
     }
+}
+
+@Composable
+private fun SwipeableTimerText(
+    minutes: Int,
+    seconds: Int,
+    isRunning: Boolean,
+    onAddMinutes: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    fontSize: androidx.compose.ui.unit.TextUnit = 84.sp,
+    letterSpacing: androidx.compose.ui.unit.TextUnit = (-2).sp
+) {
+    val dragThreshold = 40f // pixels per 1 minute change
+    val currentOnAddMinutes by rememberUpdatedState(onAddMinutes)
+
+    Text(
+        text = String.format("%02d:%02d", minutes, seconds),
+        fontSize = fontSize,
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Light,
+        letterSpacing = letterSpacing,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier.then(
+            if (isRunning) {
+                Modifier.pointerInput(Unit) {
+                    var totalDrag = 0f
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull()
+                            if (change != null && change.pressed) {
+                                val dragAmount = change.position.y - change.previousPosition.y
+                                totalDrag += dragAmount
+
+                                // Negative drag = swipe up = add time
+                                // Positive drag = swipe down = subtract time
+                                while (totalDrag <= -dragThreshold) {
+                                    currentOnAddMinutes(1)
+                                    totalDrag += dragThreshold
+                                }
+                                while (totalDrag >= dragThreshold) {
+                                    currentOnAddMinutes(-1)
+                                    totalDrag -= dragThreshold
+                                }
+                                change.consume()
+                            } else {
+                                totalDrag = 0f
+                            }
+                        }
+                    }
+                }
+            } else {
+                Modifier
+            }
+        )
+    )
 }
 
 @Composable
@@ -815,6 +902,7 @@ private fun PomodoroControlButtons(
     onResume: () -> Unit,
     onReset: () -> Unit,
     onSkip: () -> Unit,
+    onAddTime: (Int) -> Unit = {},
     compact: Boolean = false
 ) {
     val buttonSize = if (compact) 48.dp else 56.dp
@@ -933,7 +1021,31 @@ private fun PomodoroControlButtons(
                     Icon(Icons.Default.Pause, "Pause", modifier = Modifier.size(iconSize))
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // +5 button (tap = +5mn, long press = +1mn)
+                Box(
+                    modifier = Modifier
+                        .size(buttonSize)
+                        .clip(RoundedCornerShape(buttonSize / 2))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { onAddTime(5) },
+                                onLongPress = { onAddTime(1) }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+5",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
 
                 FilledIconButton(
                     onClick = onSkip,

@@ -199,6 +199,24 @@ class PomodoroViewModel : ViewModel() {
         startCountdown()
     }
 
+    fun addTime(minutes: Int) {
+        val state = _pomodoroState.value
+        // Prevent going below 1 minute
+        val minRemaining = 60 * 1000L
+        val addedMillis = minutes * 60 * 1000L
+        val newRemaining = (state.remainingMillis + addedMillis).coerceAtLeast(minRemaining)
+        val actualAdded = newRemaining - state.remainingMillis
+
+        if (actualAdded != 0L) {
+            endTimeMillis += actualAdded
+            _pomodoroState.value = state.copy(
+                remainingMillis = newRemaining,
+                totalMillis = state.totalMillis + actualAdded
+            )
+            appContext?.let { TimerService.addTime(it, actualAdded) }
+        }
+    }
+
     fun reset() {
         timerJob?.cancel()
         val state = _pomodoroState.value

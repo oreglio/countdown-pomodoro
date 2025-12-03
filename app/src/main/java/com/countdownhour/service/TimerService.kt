@@ -87,6 +87,10 @@ class TimerService : Service() {
             ACTION_PAUSE -> pauseTimers()
             ACTION_RESUME -> resumeTimers()
             ACTION_STOP -> stopTimers()
+            ACTION_ADD_TIME -> {
+                val addedMillis = intent.getLongExtra(EXTRA_ADDED_TIME, 0L)
+                addTimeToPomodoro(addedMillis)
+            }
         }
         return START_STICKY
     }
@@ -249,6 +253,20 @@ class TimerService : Service() {
         stopSelf()
     }
 
+    private fun addTimeToPomodoro(addedMillis: Long) {
+        if (_pomodoroRunning.value && _pomodoroRemainingMillis.value > 0) {
+            pomodoroEndTime += addedMillis
+            _pomodoroRemainingMillis.value = _pomodoroRemainingMillis.value + addedMillis
+            val phaseLabel = when (_pomodoroPhase.value) {
+                PomodoroPhase.WORK -> "Focus"
+                PomodoroPhase.SHORT_BREAK -> "Short Break"
+                PomodoroPhase.LONG_BREAK -> "Long Break"
+                else -> "Pomodoro"
+            }
+            updateNotification(phaseLabel, formatTime(_pomodoroRemainingMillis.value))
+        }
+    }
+
     fun syncCountdownState(remainingMillis: Long, isRunning: Boolean) {
         if (isRunning && remainingMillis > 0) {
             countdownTargetTime = System.currentTimeMillis() + remainingMillis
@@ -325,9 +343,11 @@ class TimerService : Service() {
         const val ACTION_PAUSE = "pause"
         const val ACTION_RESUME = "resume"
         const val ACTION_STOP = "stop"
+        const val ACTION_ADD_TIME = "add_time"
         const val EXTRA_TARGET_TIME = "target_time"
         const val EXTRA_DURATION = "duration"
         const val EXTRA_PHASE = "phase"
+        const val EXTRA_ADDED_TIME = "added_time"
 
         fun startCountdown(context: Context, targetTimeMillis: Long) {
             val intent = Intent(context, TimerService::class.java).apply {
@@ -371,6 +391,14 @@ class TimerService : Service() {
         fun stop(context: Context) {
             val intent = Intent(context, TimerService::class.java).apply {
                 action = ACTION_STOP
+            }
+            context.startService(intent)
+        }
+
+        fun addTime(context: Context, addedMillis: Long) {
+            val intent = Intent(context, TimerService::class.java).apply {
+                action = ACTION_ADD_TIME
+                putExtra(EXTRA_ADDED_TIME, addedMillis)
             }
             context.startService(intent)
         }

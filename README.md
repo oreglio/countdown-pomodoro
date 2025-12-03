@@ -36,6 +36,10 @@ A minimalist Android countdown timer app with Pomodoro functionality, optimized 
 - Visual progress tracking with cycle indicators
 - Completed pomodoros counter
 - Elapsed time display after session completion
+- Extend time during session:
+  - Tap +5 button to add 5 minutes
+  - Long press +5 button to add 1 minute
+  - Swipe up/down on timer to add/remove minutes
 
 ### Task Management
 - Task pool to store up to 15 tasks
