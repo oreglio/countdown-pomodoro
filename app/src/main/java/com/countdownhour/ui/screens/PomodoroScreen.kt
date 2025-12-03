@@ -481,7 +481,7 @@ private fun PomodoroLandscapeLayout(
                         state.remainingMinutes,
                         state.remainingSeconds
                     ),
-                    fontSize = 72.sp,
+                    fontSize = 84.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Light,
                     letterSpacing = (-2).sp,
