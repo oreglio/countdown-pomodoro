@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -124,7 +125,8 @@ fun PomodoroScreen(
             onAddTodo = { viewModel.addTodoToPool(it) },
             onRemoveTodo = { viewModel.removeTodoFromPool(it) },
             onToggleSelection = { viewModel.toggleTodoSelection(it) },
-            onToggleCompletion = { viewModel.toggleTodoPoolCompletion(it) }
+            onToggleCompletion = { viewModel.toggleTodoPoolCompletion(it) },
+            onClearAll = { viewModel.clearAllTodos() }
         )
     } else {
         if (isLandscape) {
@@ -951,7 +953,8 @@ private fun TodoPoolScreen(
     onAddTodo: (String) -> Unit,
     onRemoveTodo: (String) -> Unit,
     onToggleSelection: (String) -> Unit,
-    onToggleCompletion: (String) -> Unit
+    onToggleCompletion: (String) -> Unit,
+    onClearAll: () -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
 
@@ -969,13 +972,34 @@ private fun TodoPoolScreen(
                 .fillMaxSize()
                 .padding(bottom = 80.dp)  // Space for fixed button
         ) {
-            // Header
-            Text(
-                text = "Task Pool",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(24.dp)
-            )
+            // Header with optional trash icon
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 16.dp, top = 24.dp, bottom = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Task Pool",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (todos.isNotEmpty()) {
+                    IconButton(
+                        onClick = onClearAll,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.DeleteOutline,
+                            contentDescription = "Clear all tasks",
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
 
             // Scrollable content
             Column(

@@ -161,8 +161,22 @@ class PomodoroViewModel : ViewModel() {
 
     fun reset() {
         timerJob?.cancel()
-        _pomodoroState.value = PomodoroState()
+        val state = _pomodoroState.value
+        // Preserve todoPool and selectedTodoIds when resetting
+        _pomodoroState.value = PomodoroState(
+            todoPool = state.todoPool,
+            selectedTodoIds = state.selectedTodoIds,
+            settings = state.settings
+        )
         appContext?.let { TimerService.stop(it) }
+    }
+
+    fun clearAllTodos() {
+        _pomodoroState.value = _pomodoroState.value.copy(
+            todoPool = emptyList(),
+            selectedTodoIds = emptySet(),
+            todos = emptyList()
+        )
     }
 
     fun skipPhase() {
