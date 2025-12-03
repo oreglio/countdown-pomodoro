@@ -252,7 +252,7 @@ private fun PomodoroPortraitLayout(
                     onClick = onShowTodos,
                     modifier = Modifier.size(40.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = if (state.todos.isNotEmpty())
+                        containerColor = if (state.todoPool.isNotEmpty())
                             MaterialTheme.colorScheme.primary
                         else
                             MaterialTheme.colorScheme.surfaceVariant
@@ -456,7 +456,7 @@ private fun PomodoroLandscapeLayout(
                         onClick = onShowTodos,
                         modifier = Modifier.size(36.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = if (state.todos.isNotEmpty())
+                            containerColor = if (state.todoPool.isNotEmpty())
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.surfaceVariant
