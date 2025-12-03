@@ -45,6 +45,12 @@ A minimalist Android countdown timer app with Pomodoro functionality, optimized 
 - Completed tasks auto-unselected and moved to "DONE" section
 - Long press on tasks to toggle completion in pool
 - Long press on Focus button to start without task selection
+- Double tap trash icon to clear all tasks
+
+### Data Persistence
+- Tasks, settings, and progress saved automatically
+- Data survives app restarts and updates
+- Task timestamps (created/completed) tracked
 
 ### E-Ink Optimized
 - High contrast black & white theme
@@ -57,6 +63,7 @@ A minimalist Android countdown timer app with Pomodoro functionality, optimized 
 - **Language**: Kotlin
 - **UI**: Jetpack Compose with Material 3
 - **Architecture**: MVVM with ViewModel and StateFlow
+- **Persistence**: DataStore Preferences + Kotlin Serialization
 - **Min SDK**: 21 (Android 5.0)
 - **Target SDK**: 34 (Android 14)
 
@@ -85,7 +92,8 @@ app/src/main/java/com/countdownhour/
 ├── MainActivity.kt
 ├── data/
 │   ├── TimerState.kt
-│   └── PomodoroState.kt
+│   ├── PomodoroState.kt
+│   └── PomodoroDataStore.kt
 ├── service/
 │   └── TimerService.kt
 ├── viewmodel/
