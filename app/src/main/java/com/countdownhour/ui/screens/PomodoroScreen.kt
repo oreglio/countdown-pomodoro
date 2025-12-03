@@ -122,7 +122,8 @@ fun PomodoroScreen(
             onDismiss = { showTodoDialog = false },
             onAddTodo = { viewModel.addTodoToPool(it) },
             onRemoveTodo = { viewModel.removeTodoFromPool(it) },
-            onToggleSelection = { viewModel.toggleTodoSelection(it) }
+            onToggleSelection = { viewModel.toggleTodoSelection(it) },
+            onToggleCompletion = { viewModel.toggleTodoPoolCompletion(it) }
         )
     } else {
         if (isLandscape) {
@@ -940,9 +941,14 @@ private fun TodoPoolScreen(
     onDismiss: () -> Unit,
     onAddTodo: (String) -> Unit,
     onRemoveTodo: (String) -> Unit,
-    onToggleSelection: (String) -> Unit
+    onToggleSelection: (String) -> Unit,
+    onToggleCompletion: (String) -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
+
+    // Split todos into active and completed
+    val activeTodos = todos.filter { !it.isCompleted }
+    val completedTodos = todos.filter { it.isCompleted }
 
     Box(
         modifier = Modifier
@@ -1034,7 +1040,7 @@ private fun TodoPoolScreen(
                 }
 
                 // Selection hint
-                if (todos.isNotEmpty()) {
+                if (activeTodos.isNotEmpty()) {
                     Text(
                         text = "Select up to 3 tasks for your focus session (${selectedIds.size}/3)",
                         style = MaterialTheme.typography.bodySmall,
@@ -1043,67 +1049,40 @@ private fun TodoPoolScreen(
                     )
                 }
 
-                // Todo list with selection
-                todos.forEach { todo ->
-                    val isSelected = todo.id in selectedIds
-                    val canSelect = isSelected || selectedIds.size < 3
+                // Active todo list with selection
+                activeTodos.forEach { todo ->
+                    TodoPoolItem(
+                        todo = todo,
+                        isSelected = todo.id in selectedIds,
+                        canSelect = todo.id in selectedIds || selectedIds.size < 3,
+                        onToggleSelection = { onToggleSelection(todo.id) },
+                        onToggleCompletion = { onToggleCompletion(todo.id) },
+                        onRemove = { onRemoveTodo(todo.id) }
+                    )
+                }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                if (isSelected)
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            .clickable(enabled = canSelect) { onToggleSelection(todo.id) }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Selection indicator (round)
-                        Icon(
-                            imageVector = if (isSelected)
-                                Icons.Default.CheckCircle
-                            else
-                                Icons.Default.RadioButtonUnchecked,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = if (isSelected)
-                                MaterialTheme.colorScheme.primary
-                            else if (canSelect)
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                // Completed section
+                if (completedTodos.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "DONE",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    )
+
+                    completedTodos.forEach { todo ->
+                        TodoPoolItem(
+                            todo = todo,
+                            isSelected = todo.id in selectedIds,
+                            canSelect = todo.id in selectedIds || selectedIds.size < 3,
+                            isCompleted = true,
+                            onToggleSelection = { onToggleSelection(todo.id) },
+                            onToggleCompletion = { onToggleCompletion(todo.id) },
+                            onRemove = { onRemoveTodo(todo.id) }
                         )
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Text(
-                            text = todo.text,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (canSelect)
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 2
-                        )
-
-                        // Delete button
-                        IconButton(
-                            onClick = { onRemoveTodo(todo.id) },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Remove",
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
 
@@ -1143,6 +1122,89 @@ private fun TodoPoolScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun TodoPoolItem(
+    todo: PomodoroTodo,
+    isSelected: Boolean,
+    canSelect: Boolean,
+    isCompleted: Boolean = false,
+    onToggleSelection: () -> Unit,
+    onToggleCompletion: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val textColor = if (isCompleted)
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+    else if (canSelect)
+        MaterialTheme.colorScheme.onSurface
+    else
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                when {
+                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    isCompleted -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                }
+            )
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { if (canSelect) onToggleSelection() },
+                    onLongPress = { onToggleCompletion() }
+                )
+            }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Selection indicator (round)
+        Icon(
+            imageVector = if (isSelected)
+                Icons.Default.CheckCircle
+            else
+                Icons.Default.RadioButtonUnchecked,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = when {
+                isCompleted -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                isSelected -> MaterialTheme.colorScheme.primary
+                canSelect -> MaterialTheme.colorScheme.onSurfaceVariant
+                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+            }
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Text(
+            text = todo.text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = textColor,
+            fontWeight = if (isSelected && !isCompleted) FontWeight.Medium else FontWeight.Normal,
+            textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+            modifier = Modifier.weight(1f),
+            maxLines = 2
+        )
+
+        // Delete button
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Remove",
+                modifier = Modifier.size(20.dp),
+                tint = if (isCompleted)
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

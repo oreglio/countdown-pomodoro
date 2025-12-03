@@ -221,8 +221,26 @@ class PomodoroViewModel : ViewModel() {
 
     fun toggleTodo(id: String) {
         val state = _pomodoroState.value
+        val newCompletedState = state.todos.find { it.id == id }?.isCompleted?.not() ?: return
+
         _pomodoroState.value = state.copy(
+            // Update active todos
             todos = state.todos.map { todo ->
+                if (todo.id == id) todo.copy(isCompleted = newCompletedState)
+                else todo
+            },
+            // Sync completion status back to pool
+            todoPool = state.todoPool.map { todo ->
+                if (todo.id == id) todo.copy(isCompleted = newCompletedState)
+                else todo
+            }
+        )
+    }
+
+    fun toggleTodoPoolCompletion(id: String) {
+        val state = _pomodoroState.value
+        _pomodoroState.value = state.copy(
+            todoPool = state.todoPool.map { todo ->
                 if (todo.id == id) todo.copy(isCompleted = !todo.isCompleted)
                 else todo
             }
