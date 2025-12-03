@@ -1003,8 +1003,7 @@ private fun TodoPoolScreen(
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
-                                singleLine = false,
-                                maxLines = 2,
+                                singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(
                                     onDone = {
@@ -1042,7 +1041,7 @@ private fun TodoPoolScreen(
                 // Selection hint
                 if (activeTodos.isNotEmpty()) {
                     Text(
-                        text = "Select up to 3 tasks for your focus session (${selectedIds.size}/3)",
+                        text = "Select up to 5 tasks for your focus session (${selectedIds.size}/5)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
@@ -1054,7 +1053,7 @@ private fun TodoPoolScreen(
                     TodoPoolItem(
                         todo = todo,
                         isSelected = todo.id in selectedIds,
-                        canSelect = todo.id in selectedIds || selectedIds.size < 3,
+                        canSelect = todo.id in selectedIds || selectedIds.size < 5,
                         onToggleSelection = { onToggleSelection(todo.id) },
                         onToggleCompletion = { onToggleCompletion(todo.id) },
                         onRemove = { onRemoveTodo(todo.id) }
@@ -1077,7 +1076,7 @@ private fun TodoPoolScreen(
                         TodoPoolItem(
                             todo = todo,
                             isSelected = todo.id in selectedIds,
-                            canSelect = todo.id in selectedIds || selectedIds.size < 3,
+                            canSelect = todo.id in selectedIds || selectedIds.size < 5,
                             isCompleted = true,
                             onToggleSelection = { onToggleSelection(todo.id) },
                             onToggleCompletion = { onToggleCompletion(todo.id) },

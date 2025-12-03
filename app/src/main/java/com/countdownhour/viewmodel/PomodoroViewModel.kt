@@ -211,10 +211,10 @@ class PomodoroViewModel : ViewModel() {
         val state = _pomodoroState.value
         val newSelection = if (id in state.selectedTodoIds) {
             state.selectedTodoIds - id
-        } else if (state.selectedTodoIds.size < 3) {
+        } else if (state.selectedTodoIds.size < 5) {
             state.selectedTodoIds + id
         } else {
-            state.selectedTodoIds  // Max 3 selected
+            state.selectedTodoIds  // Max 5 selected
         }
         _pomodoroState.value = state.copy(selectedTodoIds = newSelection)
     }
