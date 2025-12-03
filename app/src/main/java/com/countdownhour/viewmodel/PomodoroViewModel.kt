@@ -233,17 +233,23 @@ class PomodoroViewModel : ViewModel() {
             todoPool = state.todoPool.map { todo ->
                 if (todo.id == id) todo.copy(isCompleted = newCompletedState)
                 else todo
-            }
+            },
+            // Unselect if completed
+            selectedTodoIds = if (newCompletedState) state.selectedTodoIds - id else state.selectedTodoIds
         )
     }
 
     fun toggleTodoPoolCompletion(id: String) {
         val state = _pomodoroState.value
+        val isNowCompleted = state.todoPool.find { it.id == id }?.isCompleted?.not() ?: return
+
         _pomodoroState.value = state.copy(
             todoPool = state.todoPool.map { todo ->
-                if (todo.id == id) todo.copy(isCompleted = !todo.isCompleted)
+                if (todo.id == id) todo.copy(isCompleted = isNowCompleted)
                 else todo
-            }
+            },
+            // Unselect if completed
+            selectedTodoIds = if (isNowCompleted) state.selectedTodoIds - id else state.selectedTodoIds
         )
     }
 

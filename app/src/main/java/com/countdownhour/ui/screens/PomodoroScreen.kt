@@ -875,60 +875,67 @@ private fun FocusTodoList(
     onToggle: (String) -> Unit,
     compact: Boolean = false
 ) {
-    Column(
+    // Subtle card container
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, end = 8.dp, top = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-        horizontalAlignment = Alignment.Start
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            .padding(12.dp)
     ) {
-        todos.forEach { todo ->
-            // All todos black, light grey when completed
-            val textColor = if (todo.isCompleted)
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-            else
-                MaterialTheme.colorScheme.onSurface
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            todos.forEach { todo ->
+                // All todos black, light grey when completed
+                val textColor = if (todo.isCompleted)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                else
+                    MaterialTheme.colorScheme.onSurface
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (todo.isCompleted)
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (todo.isCompleted)
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            else
+                                Color.Transparent
+                        )
+                        .clickable { onToggle(todo.id) }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Round checkbox (grey when completed)
+                    Icon(
+                        imageVector = if (todo.isCompleted)
+                            Icons.Default.CheckCircle
                         else
-                            Color.Transparent
+                            Icons.Default.RadioButtonUnchecked,
+                        contentDescription = null,
+                        modifier = Modifier.size(if (compact) 18.dp else 22.dp),
+                        tint = textColor  // Same grey as text when completed
                     )
-                    .clickable { onToggle(todo.id) }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Round checkbox (grey when completed)
-                Icon(
-                    imageVector = if (todo.isCompleted)
-                        Icons.Default.CheckCircle
-                    else
-                        Icons.Default.RadioButtonUnchecked,
-                    contentDescription = null,
-                    modifier = Modifier.size(if (compact) 18.dp else 22.dp),
-                    tint = textColor  // Same grey as text when completed
-                )
 
-                Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
 
-                Text(
-                    text = todo.text,
-                    style = if (compact)
-                        MaterialTheme.typography.bodySmall
-                    else
-                        MaterialTheme.typography.bodyMedium,
-                    color = textColor,
-                    textDecoration = if (todo.isCompleted)
-                        TextDecoration.LineThrough
-                    else
-                        TextDecoration.None,
-                    maxLines = 2
-                )
+                    Text(
+                        text = todo.text,
+                        style = if (compact)
+                            MaterialTheme.typography.bodySmall
+                        else
+                            MaterialTheme.typography.bodyMedium,
+                        color = textColor,
+                        textDecoration = if (todo.isCompleted)
+                            TextDecoration.LineThrough
+                        else
+                            TextDecoration.None,
+                        maxLines = 2
+                    )
+                }
             }
         }
     }
