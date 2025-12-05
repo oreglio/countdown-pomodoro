@@ -289,7 +289,7 @@ class PomodoroViewModel : ViewModel() {
     // Todo pool management
     fun addTodoToPool(text: String) {
         val state = _pomodoroState.value
-        if (state.todoPool.size < 15 && text.isNotBlank()) {
+        if (state.todoPool.size < 50 && text.isNotBlank()) {
             val newTodo = PomodoroTodo(text = text.trim())
             _pomodoroState.value = state.copy(
                 todoPool = state.todoPool + newTodo

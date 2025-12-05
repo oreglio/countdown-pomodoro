@@ -1,5 +1,6 @@
 package com.countdownhour.ui.screens
 
+import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -1248,10 +1249,49 @@ private fun TodoPoolScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val context = LocalContext.current
                 Text(
                     text = "Task Pool",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = {
+                                // Export tasks to markdown
+                                if (todos.isNotEmpty()) {
+                                    val markdown = buildString {
+                                        appendLine("# Task Pool")
+                                        appendLine()
+                                        val active = todos.filter { !it.isCompleted }
+                                        val completed = todos.filter { it.isCompleted }
+
+                                        if (active.isNotEmpty()) {
+                                            appendLine("## To Do")
+                                            active.forEach { todo ->
+                                                appendLine("- [ ] ${todo.text}")
+                                            }
+                                            appendLine()
+                                        }
+
+                                        if (completed.isNotEmpty()) {
+                                            appendLine("## Done")
+                                            completed.forEach { todo ->
+                                                appendLine("- [x] ${todo.text}")
+                                            }
+                                        }
+                                    }
+
+                                    val sendIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, markdown)
+                                        type = "text/plain"
+                                    }
+                                    val shareIntent = Intent.createChooser(sendIntent, "Export Tasks")
+                                    context.startActivity(shareIntent)
+                                }
+                            }
+                        )
+                    }
                 )
 
                 Row(
@@ -1308,8 +1348,8 @@ private fun TodoPoolScreen(
                     .padding(horizontal = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Input row (only if less than 15 todos)
-                if (todos.size < 15) {
+                // Input row (only if less than 50 todos)
+                if (todos.size < 50) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -1368,6 +1408,18 @@ private fun TodoPoolScreen(
                             )
                         }
                     }
+                } else {
+                    // Limit reached message
+                    Text(
+                        text = "Task limit reached (50 max)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
                 }
 
                 // Selection hint
