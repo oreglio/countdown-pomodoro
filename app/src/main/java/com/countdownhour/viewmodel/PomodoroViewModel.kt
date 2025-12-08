@@ -307,6 +307,22 @@ class PomodoroViewModel : ViewModel() {
         persistData()
     }
 
+    fun updateTodoText(id: String, newText: String) {
+        if (newText.isBlank()) return
+        val state = _pomodoroState.value
+        _pomodoroState.value = state.copy(
+            todoPool = state.todoPool.map { todo ->
+                if (todo.id == id) todo.copy(text = newText.trim())
+                else todo
+            },
+            todos = state.todos.map { todo ->
+                if (todo.id == id) todo.copy(text = newText.trim())
+                else todo
+            }
+        )
+        persistData()
+    }
+
     fun toggleTodoSelection(id: String) {
         val state = _pomodoroState.value
         val todo = state.todoPool.find { it.id == id } ?: return

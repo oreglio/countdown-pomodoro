@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -138,6 +141,7 @@ fun PomodoroScreen(
             },
             onAddTodo = { viewModel.addTodoToPool(it) },
             onRemoveTodo = { viewModel.removeTodoFromPool(it) },
+            onUpdateTodo = { id, text -> viewModel.updateTodoText(id, text) },
             onToggleSelection = { viewModel.toggleTodoSelection(it) },
             onToggleCompletion = { viewModel.toggleTodoPoolCompletion(it) },
             onClearAll = { viewModel.clearAllTodos() },
@@ -293,12 +297,12 @@ private fun PomodoroPortraitLayout(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Todo button with 2-second long press for preview
+                        // Todo button with 1-second long press for preview
                         var isPressed by remember { mutableStateOf(false) }
 
                         LaunchedEffect(isPressed) {
                             if (isPressed && selectedTasks.isNotEmpty()) {
-                                delay(2000L)
+                                delay(1000L)
                                 if (isPressed) {
                                     showSelectedTasksPreview = true
                                     isPressed = false
@@ -515,7 +519,7 @@ private fun SelectedTasksPreview(tasks: List<PomodoroTodo>) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(16.dp)
     ) {
         Column(
@@ -1300,6 +1304,7 @@ private fun TodoPoolScreen(
     onDismiss: () -> Unit,
     onAddTodo: (String) -> Unit,
     onRemoveTodo: (String) -> Unit,
+    onUpdateTodo: (String, String) -> Unit,
     onToggleSelection: (String) -> Unit,
     onToggleCompletion: (String) -> Unit,
     onClearAll: () -> Unit,
@@ -1514,13 +1519,13 @@ private fun TodoPoolScreen(
                                 containerColor = if (inputText.isNotBlank())
                                     MaterialTheme.colorScheme.primary
                                 else
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             )
                         ) {
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = "Add",
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(22.dp).alpha(0.40f)
                             )
                         }
                     }
@@ -1557,7 +1562,8 @@ private fun TodoPoolScreen(
                             canSelect = todo.id in selectedIds || selectedIds.size < 5,
                             onToggleSelection = { onToggleSelection(todo.id) },
                             onToggleCompletion = { onToggleCompletion(todo.id) },
-                            onRemove = { onRemoveTodo(todo.id) }
+                            onRemove = { onRemoveTodo(todo.id) },
+                            onUpdate = { newText -> onUpdateTodo(todo.id, newText) }
                         )
                     }
                 }
@@ -1583,7 +1589,8 @@ private fun TodoPoolScreen(
                                 isCompleted = true,
                                 onToggleSelection = { onToggleSelection(todo.id) },
                                 onToggleCompletion = { onToggleCompletion(todo.id) },
-                                onRemove = { onRemoveTodo(todo.id) }
+                                onRemove = { onRemoveTodo(todo.id) },
+                                onUpdate = { newText -> onUpdateTodo(todo.id, newText) }
                             )
                         }
                     }
@@ -1677,8 +1684,13 @@ private fun TodoPoolItem(
     isCompleted: Boolean = false,
     onToggleSelection: () -> Unit,
     onToggleCompletion: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onUpdate: (String) -> Unit
 ) {
+    var isEditing by remember { mutableStateOf(false) }
+    var editText by remember(todo.text) { mutableStateOf(todo.text) }
+    val focusRequester = remember { FocusRequester() }
+
     val textColor = if (isCompleted)
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
     else if (canSelect)
@@ -1686,22 +1698,32 @@ private fun TodoPoolItem(
     else
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
 
+    // Request focus when entering edit mode
+    LaunchedEffect(isEditing) {
+        if (isEditing) {
+            focusRequester.requestFocus()
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .background(
                 when {
+                    isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
                     isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     isCompleted -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
             )
-            .pointerInput(isCompleted, canSelect) {
-                detectTapGestures(
-                    onTap = { if (!isCompleted && canSelect) onToggleSelection() },
-                    onLongPress = { onToggleCompletion() }
-                )
+            .pointerInput(isCompleted, canSelect, isEditing) {
+                if (!isEditing) {
+                    detectTapGestures(
+                        onTap = { if (!isCompleted && canSelect) onToggleSelection() },
+                        onLongPress = { onToggleCompletion() }
+                    )
+                }
             }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1725,15 +1747,51 @@ private fun TodoPoolItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Text(
-            text = todo.text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = textColor,
-            fontWeight = if (isSelected && !isCompleted) FontWeight.Medium else FontWeight.Normal,
-            textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-            modifier = Modifier.weight(1f),
-            maxLines = 2
-        )
+        // Text or edit field
+        if (isEditing) {
+            BasicTextField(
+                value = editText,
+                onValueChange = { if (it.length <= 72) editText = it },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Normal
+                ),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        if (editText.isNotBlank()) {
+                            onUpdate(editText)
+                        }
+                        isEditing = false
+                    }
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester)
+            )
+        } else {
+            Text(
+                text = todo.text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = textColor,
+                fontWeight = if (isSelected && !isCompleted) FontWeight.Medium else FontWeight.Normal,
+                textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                modifier = Modifier
+                    .weight(1f)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (!isCompleted) {
+                                    editText = todo.text
+                                    isEditing = true
+                                }
+                            }
+                        )
+                    },
+                maxLines = 2
+            )
+        }
 
         // Delete button
         IconButton(
