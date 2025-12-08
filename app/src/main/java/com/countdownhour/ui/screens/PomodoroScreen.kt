@@ -1448,7 +1448,7 @@ private fun TodoPoolScreen(
 
                     // Done button
                     Text(
-                        text = "DONE",
+                        text = "OK",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -1726,10 +1726,34 @@ private fun TodoPoolItem(
             )
             .pointerInput(isCompleted, canSelect, isEditing) {
                 if (!isEditing) {
+                    var totalDragX = 0f
                     detectTapGestures(
                         onTap = { if (!isCompleted && canSelect) onToggleSelection() },
                         onLongPress = { onToggleCompletion() }
                     )
+                }
+            }
+            .pointerInput(isCompleted, isEditing) {
+                if (!isEditing && !isCompleted) {
+                    var totalDragX = 0f
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull()
+                            if (change != null && change.pressed) {
+                                val dragX = change.position.x - change.previousPosition.x
+                                totalDragX += dragX
+                                // Swipe left threshold (-80px)
+                                if (totalDragX < -80f) {
+                                    editText = todo.text
+                                    isEditing = true
+                                    totalDragX = 0f
+                                }
+                            } else {
+                                totalDragX = 0f
+                            }
+                        }
+                    }
                 }
             }
             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1784,18 +1808,7 @@ private fun TodoPoolItem(
                 color = textColor,
                 fontWeight = if (isSelected && !isCompleted) FontWeight.Medium else FontWeight.Normal,
                 textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                modifier = Modifier
-                    .weight(1f)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onDoubleTap = {
-                                if (!isCompleted) {
-                                    editText = todo.text
-                                    isEditing = true
-                                }
-                            }
-                        )
-                    },
+                modifier = Modifier.weight(1f),
                 maxLines = 2
             )
         }
