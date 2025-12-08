@@ -36,7 +36,7 @@ data class PomodoroState(
     val currentPomodoroInCycle: Int = 0,
     val settings: PomodoroSettings = PomodoroSettings(),
     val sessionCompletedAt: Long? = null,  // Timestamp when session finished (for idle timer)
-    val todoPool: List<PomodoroTodo> = emptyList(),  // All available todos (max 15)
+    val todoPool: List<PomodoroTodo> = emptyList(),  // All available todos (max 50)
     val selectedTodoIds: Set<String> = emptySet(),  // IDs of todos selected for next session
     val todos: List<PomodoroTodo> = emptyList()  // Active todos during focus session
 ) {

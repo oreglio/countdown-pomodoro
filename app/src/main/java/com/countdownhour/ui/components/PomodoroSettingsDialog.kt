@@ -7,24 +7,23 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.countdownhour.data.PomodoroSettings
+import kotlin.math.roundToInt
 
 @Composable
 fun PomodoroSettingsDialog(
@@ -32,10 +31,10 @@ fun PomodoroSettingsDialog(
     onDismiss: () -> Unit,
     onConfirm: (PomodoroSettings) -> Unit
 ) {
-    var workDuration by remember { mutableStateOf(currentSettings.workDurationMinutes.toString()) }
-    var shortBreak by remember { mutableStateOf(currentSettings.shortBreakMinutes.toString()) }
-    var longBreak by remember { mutableStateOf(currentSettings.longBreakMinutes.toString()) }
-    var cycleCount by remember { mutableStateOf(currentSettings.pomodorosUntilLongBreak.toString()) }
+    var workDuration by remember { mutableFloatStateOf(currentSettings.workDurationMinutes.toFloat()) }
+    var shortBreak by remember { mutableFloatStateOf(currentSettings.shortBreakMinutes.toFloat()) }
+    var longBreak by remember { mutableFloatStateOf(currentSettings.longBreakMinutes.toFloat()) }
+    var cycleCount by remember { mutableFloatStateOf(currentSettings.pomodorosUntilLongBreak.toFloat()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -43,10 +42,10 @@ fun PomodoroSettingsDialog(
             TextButton(
                 onClick = {
                     val settings = PomodoroSettings(
-                        workDurationMinutes = workDuration.toIntOrNull()?.coerceIn(1, 120) ?: 25,
-                        shortBreakMinutes = shortBreak.toIntOrNull()?.coerceIn(1, 60) ?: 5,
-                        longBreakMinutes = longBreak.toIntOrNull()?.coerceIn(1, 60) ?: 15,
-                        pomodorosUntilLongBreak = cycleCount.toIntOrNull()?.coerceIn(1, 10) ?: 4
+                        workDurationMinutes = workDuration.roundToInt(),
+                        shortBreakMinutes = shortBreak.roundToInt(),
+                        longBreakMinutes = longBreak.roundToInt(),
+                        pomodorosUntilLongBreak = cycleCount.roundToInt()
                     )
                     onConfirm(settings)
                 }
@@ -69,45 +68,53 @@ fun PomodoroSettingsDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Work duration
-                SettingRow(
+                // Work duration (5-120 min)
+                SliderSetting(
                     label = "Focus Duration",
                     value = workDuration,
-                    onValueChange = { workDuration = it.filter { c -> c.isDigit() } },
+                    onValueChange = { workDuration = it },
+                    valueRange = 5f..120f,
+                    steps = 22, // (120-5)/5 - 1 = 22 steps for 5-min increments
                     suffix = "min"
                 )
 
-                // Short break
-                SettingRow(
+                // Short break (1-30 min)
+                SliderSetting(
                     label = "Short Break",
                     value = shortBreak,
-                    onValueChange = { shortBreak = it.filter { c -> c.isDigit() } },
+                    onValueChange = { shortBreak = it },
+                    valueRange = 1f..30f,
+                    steps = 28, // 1-min increments
                     suffix = "min"
                 )
 
-                // Long break
-                SettingRow(
+                // Long break (5-60 min)
+                SliderSetting(
                     label = "Long Break",
                     value = longBreak,
-                    onValueChange = { longBreak = it.filter { c -> c.isDigit() } },
+                    onValueChange = { longBreak = it },
+                    valueRange = 5f..60f,
+                    steps = 10, // 5-min increments
                     suffix = "min"
                 )
 
-                // Cycles until long break
-                SettingRow(
+                // Cycles until long break (2-8)
+                SliderSetting(
                     label = "Pomodoros until long break",
                     value = cycleCount,
-                    onValueChange = { cycleCount = it.filter { c -> c.isDigit() } },
+                    onValueChange = { cycleCount = it },
+                    valueRange = 2f..8f,
+                    steps = 5, // 1 increment steps
                     suffix = ""
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Info text
                 Text(
-                    text = "Complete ${cycleCount.toIntOrNull() ?: 4} focus sessions to earn a long break",
+                    text = "Complete ${cycleCount.roundToInt()} focus sessions to earn a long break",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -117,44 +124,48 @@ fun PomodoroSettingsDialog(
 }
 
 @Composable
-private fun SettingRow(
+private fun SliderSetting(
     label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
     suffix: String
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
-        )
-
         Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.width(72.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Medium
-                )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
-            if (suffix.isNotEmpty()) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = suffix,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = if (suffix.isNotEmpty()) "${value.roundToInt()} $suffix" else "${value.roundToInt()}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
+
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            steps = steps,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        )
     }
 }

@@ -52,6 +52,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +67,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -1204,6 +1207,8 @@ private fun TodoPoolScreen(
 ) {
     var inputText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // Custom snackbar state with countdown
     var snackbarVisible by remember { mutableStateOf(false) }
@@ -1237,6 +1242,13 @@ private fun TodoPoolScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    // Hide keyboard when tapping outside text field
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                })
+            }
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -1398,7 +1410,10 @@ private fun TodoPoolScreen(
                             },
                             modifier = Modifier.size(40.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
+                                containerColor = if (inputText.isNotBlank())
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                             )
                         ) {
                             Icon(
@@ -1434,14 +1449,16 @@ private fun TodoPoolScreen(
 
                 // Active todo list with selection
                 activeTodos.forEach { todo ->
-                    TodoPoolItem(
-                        todo = todo,
-                        isSelected = todo.id in selectedIds,
-                        canSelect = todo.id in selectedIds || selectedIds.size < 5,
-                        onToggleSelection = { onToggleSelection(todo.id) },
-                        onToggleCompletion = { onToggleCompletion(todo.id) },
-                        onRemove = { onRemoveTodo(todo.id) }
-                    )
+                    key(todo.id) {
+                        TodoPoolItem(
+                            todo = todo,
+                            isSelected = todo.id in selectedIds,
+                            canSelect = todo.id in selectedIds || selectedIds.size < 5,
+                            onToggleSelection = { onToggleSelection(todo.id) },
+                            onToggleCompletion = { onToggleCompletion(todo.id) },
+                            onRemove = { onRemoveTodo(todo.id) }
+                        )
+                    }
                 }
 
                 // Completed section
@@ -1457,15 +1474,17 @@ private fun TodoPoolScreen(
                     )
 
                     completedTodos.forEach { todo ->
-                        TodoPoolItem(
-                            todo = todo,
-                            isSelected = todo.id in selectedIds,
-                            canSelect = todo.id in selectedIds || selectedIds.size < 5,
-                            isCompleted = true,
-                            onToggleSelection = { onToggleSelection(todo.id) },
-                            onToggleCompletion = { onToggleCompletion(todo.id) },
-                            onRemove = { onRemoveTodo(todo.id) }
-                        )
+                        key(todo.id) {
+                            TodoPoolItem(
+                                todo = todo,
+                                isSelected = todo.id in selectedIds,
+                                canSelect = todo.id in selectedIds || selectedIds.size < 5,
+                                isCompleted = true,
+                                onToggleSelection = { onToggleSelection(todo.id) },
+                                onToggleCompletion = { onToggleCompletion(todo.id) },
+                                onRemove = { onRemoveTodo(todo.id) }
+                            )
+                        }
                     }
                 }
 
@@ -1485,6 +1504,9 @@ private fun TodoPoolScreen(
                         )
                     }
                 }
+
+                // Bottom margin for scroll
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
 
@@ -1574,21 +1596,22 @@ private fun TodoPoolItem(
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
             )
-            .pointerInput(Unit) {
+            .pointerInput(isCompleted, canSelect) {
                 detectTapGestures(
-                    onTap = { if (canSelect) onToggleSelection() },
+                    onTap = { if (!isCompleted && canSelect) onToggleSelection() },
                     onLongPress = { onToggleCompletion() }
                 )
             }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Selection indicator (round)
+        // Selection indicator (round) - show check icon for completed tasks
         Icon(
-            imageVector = if (isSelected)
-                Icons.Default.CheckCircle
-            else
-                Icons.Default.RadioButtonUnchecked,
+            imageVector = when {
+                isCompleted -> Icons.Default.Check
+                isSelected -> Icons.Default.CheckCircle
+                else -> Icons.Default.RadioButtonUnchecked
+            },
             contentDescription = null,
             modifier = Modifier.size(24.dp),
             tint = when {

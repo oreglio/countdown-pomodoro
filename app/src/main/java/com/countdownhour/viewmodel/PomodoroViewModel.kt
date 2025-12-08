@@ -309,6 +309,13 @@ class PomodoroViewModel : ViewModel() {
 
     fun toggleTodoSelection(id: String) {
         val state = _pomodoroState.value
+        val todo = state.todoPool.find { it.id == id } ?: return
+
+        // Don't allow selecting completed tasks
+        if (todo.isCompleted && id !in state.selectedTodoIds) {
+            return
+        }
+
         val newSelection = if (id in state.selectedTodoIds) {
             state.selectedTodoIds - id
         } else if (state.selectedTodoIds.size < 5) {
@@ -351,6 +358,11 @@ class PomodoroViewModel : ViewModel() {
 
         _pomodoroState.value = state.copy(
             todoPool = state.todoPool.map { t ->
+                if (t.id == id) t.copy(isCompleted = isNowCompleted, completedAt = completedAt)
+                else t
+            },
+            // Sync with active todos if present
+            todos = state.todos.map { t ->
                 if (t.id == id) t.copy(isCompleted = isNowCompleted, completedAt = completedAt)
                 else t
             },
