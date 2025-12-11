@@ -1325,9 +1325,10 @@ private fun TodoPoolScreen(
     val snackbarProgress = remember { Animatable(1f) }
     val snackbarDurationMs = 10000L
 
-    // Split todos into active and completed
+    // Split todos into active and completed (completed sorted by most recent first)
     val activeTodos = todos.filter { !it.isCompleted }
     val completedTodos = todos.filter { it.isCompleted }
+        .sortedByDescending { it.completedAt ?: 0L }
 
     // Animate countdown when snackbar is visible
     LaunchedEffect(snackbarVisible) {
