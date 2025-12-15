@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,10 @@ import com.countdownhour.ui.screens.MainScreen
 import com.countdownhour.ui.theme.CountdownHourTheme
 
 class MainActivity : ComponentActivity() {
+
+    // Callback to handle volume scroll in Compose
+    var onVolumeScroll: ((direction: Int) -> Unit)? = null
+    var volumeScrollEnabled: Boolean = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -39,6 +44,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (volumeScrollEnabled) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    onVolumeScroll?.invoke(1)  // Scroll down
+                    return true  // Consume event
+                }
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    onVolumeScroll?.invoke(-1)  // Scroll up
+                    return true  // Consume event
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     private fun requestNotificationPermission() {

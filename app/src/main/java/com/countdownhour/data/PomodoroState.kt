@@ -25,7 +25,10 @@ data class PomodoroSettings(
     val workDurationMinutes: Int = 25,
     val shortBreakMinutes: Int = 5,
     val longBreakMinutes: Int = 15,
-    val pomodorosUntilLongBreak: Int = 4
+    val pomodorosUntilLongBreak: Int = 4,
+    // E-Ink optimizations
+    val volumeButtonScrollEnabled: Boolean = false,
+    val volumeScrollPercent: Int = 80  // 0-100, percentage of visible height
 )
 
 data class PomodoroState(

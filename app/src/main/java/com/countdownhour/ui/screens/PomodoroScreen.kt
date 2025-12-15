@@ -6,8 +6,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -23,6 +26,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -87,6 +92,7 @@ import com.countdownhour.data.PomodoroTodo
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.countdownhour.MainActivity
 import com.countdownhour.data.PomodoroPhase
 import com.countdownhour.data.PomodoroSettings
 import com.countdownhour.data.PomodoroState
@@ -147,7 +153,9 @@ fun PomodoroScreen(
             onToggleCompletion = { viewModel.toggleTodoPoolCompletion(it) },
             onClearAll = { viewModel.clearAllTodos() },
             onClearCompleted = { viewModel.clearCompletedTodos() },
-            onRestoreTodos = { todos, selected -> viewModel.restoreTodos(todos, selected) }
+            onRestoreTodos = { todos, selected -> viewModel.restoreTodos(todos, selected) },
+            volumeScrollEnabled = state.settings.volumeButtonScrollEnabled,
+            volumeScrollPercent = state.settings.volumeScrollPercent
         )
     } else {
         if (isLandscape) {
@@ -319,7 +327,13 @@ private fun PomodoroPortraitLayout(
                                     if (state.todoPool.isNotEmpty())
                                         MaterialTheme.colorScheme.primary
                                     else
-                                        MaterialTheme.colorScheme.surfaceVariant
+                                        Color.White
+                                )
+                                .then(
+                                    if (state.todoPool.isEmpty())
+                                        Modifier.border(1.dp, Color.Black, RoundedCornerShape(20.dp))
+                                    else
+                                        Modifier
                                 )
                                 .pointerInput(selectedTasks) {
                                     detectTapGestures(
@@ -347,9 +361,11 @@ private fun PomodoroPortraitLayout(
                         // Settings button
                         FilledIconButton(
                             onClick = onShowSettings,
-                            modifier = Modifier.size(40.dp),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .border(1.dp, Color.Black, CircleShape),
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                containerColor = Color.White
                             )
                         ) {
                             Icon(
@@ -520,7 +536,8 @@ private fun SelectedTasksPreview(tasks: List<PomodoroTodo>) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(Color.White)
+            .border(1.dp, Color.Black, RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
         Column(
@@ -723,12 +740,19 @@ private fun PomodoroLandscapeLayout(
                         // Todo button
                         FilledIconButton(
                             onClick = onShowTodos,
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier
+                                .size(36.dp)
+                                .then(
+                                    if (state.todoPool.isEmpty())
+                                        Modifier.border(1.dp, Color.Black, CircleShape)
+                                    else
+                                        Modifier
+                                ),
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = if (state.todoPool.isNotEmpty())
                                     MaterialTheme.colorScheme.primary
                                 else
-                                    MaterialTheme.colorScheme.surfaceVariant
+                                    Color.White
                             )
                         ) {
                             Icon(
@@ -741,9 +765,11 @@ private fun PomodoroLandscapeLayout(
                         // Settings button
                         FilledIconButton(
                             onClick = onShowSettings,
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier
+                                .size(36.dp)
+                                .border(1.dp, Color.Black, CircleShape),
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                containerColor = Color.White
                             )
                         ) {
                             Icon(
@@ -954,14 +980,16 @@ private fun DurationAdjuster(
     ) {
         FilledIconButton(
             onClick = onDecrease,
-            modifier = Modifier.size(if (compact) 28.dp else 32.dp),
+            modifier = Modifier
+                .size(if (compact) 32.dp else 40.dp)
+                .border(1.dp, Color.Black, CircleShape),
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                containerColor = Color.White
             )
         ) {
             Text(
                 text = "−5",
-                style = MaterialTheme.typography.labelSmall,
+                style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -1007,14 +1035,16 @@ private fun DurationAdjuster(
 
         FilledIconButton(
             onClick = onIncrease,
-            modifier = Modifier.size(if (compact) 28.dp else 32.dp),
+            modifier = Modifier
+                .size(if (compact) 32.dp else 40.dp)
+                .border(1.dp, Color.Black, CircleShape),
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                containerColor = Color.White
             )
         ) {
             Text(
                 text = "+5",
-                style = MaterialTheme.typography.labelSmall,
+                style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -1126,9 +1156,11 @@ private fun PomodoroControlButtons(
                 if (completedPomodoros > 0) {
                     FilledIconButton(
                         onClick = onReset,
-                        modifier = Modifier.size(if (compact) 36.dp else 40.dp),
+                        modifier = Modifier
+                            .size(if (compact) 36.dp else 40.dp)
+                            .border(1.dp, Color.Black, CircleShape),
                         colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = Color.White
                         )
                     ) {
                         Icon(
@@ -1163,7 +1195,8 @@ private fun PomodoroControlButtons(
                     modifier = Modifier
                         .size(buttonSize)
                         .clip(RoundedCornerShape(buttonSize / 2))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(Color.White)
+                        .border(1.dp, Color.Black, RoundedCornerShape(buttonSize / 2))
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = { onAddTime(5) },
@@ -1176,7 +1209,7 @@ private fun PomodoroControlButtons(
                         text = "+5",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.Black
                     )
                 }
 
@@ -1184,9 +1217,11 @@ private fun PomodoroControlButtons(
 
                 FilledIconButton(
                     onClick = onSkip,
-                    modifier = Modifier.size(buttonSize),
+                    modifier = Modifier
+                        .size(buttonSize)
+                        .border(1.dp, Color.Black, CircleShape),
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = Color.White
                     )
                 ) {
                     Icon(Icons.Default.SkipNext, "Skip", modifier = Modifier.size(iconSize))
@@ -1213,9 +1248,11 @@ private fun PomodoroControlButtons(
 
                 FilledIconButton(
                     onClick = onReset,
-                    modifier = Modifier.size(buttonSize),
+                    modifier = Modifier
+                        .size(buttonSize)
+                        .border(1.dp, Color.Black, CircleShape),
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = Color.White
                     )
                 ) {
                     Icon(Icons.Default.Refresh, "Reset", modifier = Modifier.size(iconSize))
@@ -1231,13 +1268,13 @@ private fun FocusTodoList(
     onToggle: (String) -> Unit,
     compact: Boolean = false
 ) {
-    // Subtle card container
+    // Subtle card container - border instead of gray fill for e-ink
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            .border(1.dp, Color.Black, RoundedCornerShape(12.dp))
             .padding(12.dp)
     ) {
         Column(
@@ -1255,11 +1292,11 @@ private fun FocusTodoList(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(
+                        .then(
                             if (todo.isCompleted)
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                Modifier.border(1.dp, Color.Black.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                             else
-                                Color.Transparent
+                                Modifier
                         )
                         .clickable { onToggle(todo.id) }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -1278,19 +1315,30 @@ private fun FocusTodoList(
 
                     Spacer(modifier = Modifier.width(10.dp))
 
+                    // Dynamic font size: reduce if text overflows
+                    var useSmallFont by remember { mutableStateOf(false) }
+
                     Text(
                         text = todo.text,
-                        style = if (compact)
-                            MaterialTheme.typography.bodySmall
-                        else
-                            MaterialTheme.typography.bodyMedium,
+                        style = when {
+                            useSmallFont && compact -> MaterialTheme.typography.bodySmall
+                            useSmallFont -> MaterialTheme.typography.bodyMedium
+                            compact -> MaterialTheme.typography.bodyMedium
+                            else -> MaterialTheme.typography.bodyLarge
+                        },
                         color = textColor,
                         textDecoration = if (todo.isCompleted)
                             TextDecoration.LineThrough
                         else
                             TextDecoration.None,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { textLayoutResult ->
+                            // If text overflows and we haven't already reduced, reduce font
+                            if (textLayoutResult.hasVisualOverflow && !useSmallFont) {
+                                useSmallFont = true
+                            }
+                        }
                     )
                 }
             }
@@ -1310,12 +1358,38 @@ private fun TodoPoolScreen(
     onToggleCompletion: (String) -> Unit,
     onClearAll: () -> Unit,
     onClearCompleted: () -> Unit,
-    onRestoreTodos: (List<PomodoroTodo>, Set<String>) -> Unit
+    onRestoreTodos: (List<PomodoroTodo>, Set<String>) -> Unit,
+    volumeScrollEnabled: Boolean = false,
+    volumeScrollPercent: Int = 80
 ) {
     var inputText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+    var scrollAreaHeight by remember { mutableStateOf(0) }
+
+    // Register volume scroll callback with MainActivity
+    DisposableEffect(volumeScrollEnabled, volumeScrollPercent) {
+        val activity = context as? MainActivity
+        activity?.volumeScrollEnabled = volumeScrollEnabled
+        activity?.onVolumeScroll = { direction ->
+            scope.launch {
+                val scrollAmount = (scrollAreaHeight * volumeScrollPercent / 100f).toInt()
+                scrollState.animateScrollBy(
+                    value = scrollAmount * direction.toFloat(),
+                    animationSpec = tween(durationMillis = 100)
+                )
+            }
+        }
+        onDispose {
+            activity?.let {
+                it.onVolumeScroll = null
+                it.volumeScrollEnabled = false
+            }
+        }
+    }
 
     // Custom snackbar state with countdown
     var snackbarVisible by remember { mutableStateOf(false) }
@@ -1464,7 +1538,8 @@ private fun TodoPoolScreen(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .onSizeChanged { scrollAreaHeight = it.height }
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -1479,7 +1554,8 @@ private fun TodoPoolScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .background(Color.White)
+                                .border(1.dp, Color.Black, RoundedCornerShape(12.dp))
                                 .padding(horizontal = 16.dp, vertical = 14.dp)
                         ) {
                             if (inputText.isEmpty()) {
@@ -1516,12 +1592,19 @@ private fun TodoPoolScreen(
                                     inputText = ""
                                 }
                             },
-                            modifier = Modifier.size(40.dp),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .then(
+                                    if (inputText.isBlank())
+                                        Modifier.border(1.dp, Color.Black, CircleShape)
+                                    else
+                                        Modifier
+                                ),
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = if (inputText.isNotBlank())
                                     MaterialTheme.colorScheme.primary
                                 else
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    Color.White
                             )
                         ) {
                             Icon(
@@ -1717,13 +1800,18 @@ private fun TodoPoolItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(
-                when {
-                    isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-                    isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                    isCompleted -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
+            .background(Color.White)
+            .border(
+                width = when {
+                    isEditing -> 2.dp
+                    isSelected -> 2.dp
+                    else -> 1.dp
+                },
+                color = when {
+                    isCompleted -> Color.Black.copy(alpha = 0.3f)
+                    else -> Color.Black
+                },
+                shape = RoundedCornerShape(10.dp)
             )
             .pointerInput(isCompleted, canSelect, isEditing) {
                 if (!isEditing) {

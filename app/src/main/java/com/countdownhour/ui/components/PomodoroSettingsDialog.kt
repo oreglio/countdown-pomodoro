@@ -8,14 +8,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,6 +39,8 @@ fun PomodoroSettingsDialog(
     var shortBreak by remember { mutableFloatStateOf(currentSettings.shortBreakMinutes.toFloat()) }
     var longBreak by remember { mutableFloatStateOf(currentSettings.longBreakMinutes.toFloat()) }
     var cycleCount by remember { mutableFloatStateOf(currentSettings.pomodorosUntilLongBreak.toFloat()) }
+    var volumeScrollEnabled by remember { mutableStateOf(currentSettings.volumeButtonScrollEnabled) }
+    var volumeScrollPercent by remember { mutableFloatStateOf(currentSettings.volumeScrollPercent.toFloat()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -45,7 +51,9 @@ fun PomodoroSettingsDialog(
                         workDurationMinutes = workDuration.roundToInt(),
                         shortBreakMinutes = shortBreak.roundToInt(),
                         longBreakMinutes = longBreak.roundToInt(),
-                        pomodorosUntilLongBreak = cycleCount.roundToInt()
+                        pomodorosUntilLongBreak = cycleCount.roundToInt(),
+                        volumeButtonScrollEnabled = volumeScrollEnabled,
+                        volumeScrollPercent = volumeScrollPercent.roundToInt()
                     )
                     onConfirm(settings)
                 }
@@ -118,6 +126,54 @@ fun PomodoroSettingsDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // E-Ink Section Header
+                Text(
+                    text = "E-Ink Optimization",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Volume Button Scroll Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Volume button scroll",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Switch(
+                        checked = volumeScrollEnabled,
+                        onCheckedChange = { volumeScrollEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+
+                // Scroll Amount Slider (only visible when enabled)
+                if (volumeScrollEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SliderSetting(
+                        label = "Scroll amount",
+                        value = volumeScrollPercent,
+                        onValueChange = { volumeScrollPercent = it },
+                        valueRange = 10f..100f,
+                        steps = 8,  // 10% increments
+                        suffix = "%"
+                    )
+                }
             }
         }
     )
